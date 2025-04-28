@@ -44,11 +44,13 @@ specified_date_input = st.text_input("配達指定日を入力してください
 
 # メッセージ作成ボタン
 if st.button("メッセージを作成"):
+    # 配達指定日のセット
     if specified_date_input:
         specified_date = specified_date_input
     else:
         specified_date = f"{tomorrow_month}/{tomorrow_day}"
 
+    # 支払い方法による表記
     if payment_method == "銀行振込":
         price_suffix = "（消費税込み）"
     elif payment_method == "代引き":
@@ -56,6 +58,7 @@ if st.button("メッセージを作成"):
     else:
         price_suffix = "（着払い送料並びに代引き手数料及び消費税込み）"
 
+    # 金額整形
     try:
         total_price = int(total_price_input.replace(",", ""))
         total_price_str = f"{total_price:,}"
@@ -63,32 +66,34 @@ if st.button("メッセージを作成"):
         st.error("金額の入力が正しくありません。数字だけ、またはカンマ付きで入力してください。")
         st.stop()
 
+    # 送り状リンク
     if carrier == "ヤマト運輸":
         tracking_link = f"https://jizen.kuronekoyamato.co.jp/jizen/servlet/crjz.b.NQ0010?id={tracking_number}"
     else:
         tracking_link = f"https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do?okurijoNo={tracking_number}"
 
+    # 支払い方法による文章分岐
     if payment_method == "着払い":
-        main_message = "パソコン修理のご期待にお応えすることが出来ず申し訳ございませんでした。\nお預かりのパソコンをご返却いたします。"
+        main_message = "パソコン修理のご期待にお応えすることが出来ず、誠に申し訳ございませんでした。\nお預かりしていたパソコンをご返却させていただきます。"
         repair_text = "修理中断"
-        check_text = "検品"
+        action_sentence = "到着後、検品をお願い申し上げます。"
     else:
-        main_message = "修理のご依頼をいただき、誠にありがとうございました。\n心より感謝申し上げます。\nお預かりのパソコン修理が完了致しました。"
+        main_message = "修理のご依頼をいただき、誠にありがとうございました。\nお預かりしていたパソコンの修理が完了いたしました。"
         repair_text = repair_detail
-        check_text = "動作チェック"
+        action_sentence = "到着後、動作のご確認をお願い申し上げます。"
 
-    # 作成されるメッセージ
+    # --- メッセージ本文作成 ---
     message = f"""お世話になっております。
 パソコン修理のルキテック　スタッフです。
 
 {main_message}
 
-本日　{month}/{day}　発送となります。
+本日　{month}月{day}日　発送となります。
 到着までしばらくお待ちくださいませ。
 
-{carrier}　問合せ番号　{tracking_number}
+{carrier}　お問い合わせ番号　{tracking_number}
 {tracking_link}
-※web上でご確認いただけるまで時間がかかります。
+※Web上でご確認いただけるまでに時間がかかる場合がございます。
 
 ▼修理内容
 ---------------------------------
@@ -97,14 +102,14 @@ if st.button("メッセージを作成"):
 ▼修理代金
 合計　　　　{total_price_str}円{price_suffix}
 
-{specified_date} {time_slot} 配達予定となっております。{check_text}をお願いいたします。
-運送会社の都合により時間帯のご希望に添えない場合はあるので事前にご了承をお願いいたします。
+{specified_date} {time_slot} 配達予定となっております。{action_sentence}
+運送会社の都合によりご希望の時間帯にお届けできない場合がございますので、あらかじめご了承ください。
 
-パソコン到着後、すぐに{check_text}してください。
-何かご質問等ありましたら、お気軽にお問合せくださいませ。
+パソコン到着後は、速やかにご確認をお願いいたします。
+何かご不明な点がございましたら、お気軽にお問い合わせくださいませ。
 
-今後ともよろしくお願いいたします。
+今後ともよろしくお願い申し上げます。
 """
 
-    # --- 作成したメッセージを普通に表示するだけ ---
+    # --- メッセージ表示 ---
     st.text_area("完成したメッセージ（ここから手動でコピーしてください）", message, height=800)
