@@ -1,8 +1,7 @@
 import streamlit as st
 from datetime import datetime, timedelta
-import pyperclip
 
-st.title("修理完了連絡用メッセージ作成ツール")
+st.title("修理完了連絡用メッセージ作成ツール（コピーボタン付き）")
 
 # 今日と明日の日付＋月
 today = datetime.today()
@@ -40,19 +39,16 @@ repair_detail = st.text_area("修理内容を入力してください", height=1
 # 合計金額の入力（カンマOK）
 total_price_input = st.text_input("合計金額を入力してください（例：12,345）")
 
-# 配達指定日入力（ここに移動！）
+# 配達指定日の入力
 specified_date_input = st.text_input("配達指定日を入力してください（例：5/5）※未入力なら明日になります")
 
-# ここでメッセージを作る
+# メッセージ作成ボタン
 if st.button("メッセージを作成"):
-
-    # 指定日が入力されていればそれを、なければ明日
     if specified_date_input:
         specified_date = specified_date_input
     else:
         specified_date = f"{tomorrow_month}/{tomorrow_day}"
 
-    # 支払い方法による金額の表記
     if payment_method == "銀行振込":
         price_suffix = "（消費税込み）"
     elif payment_method == "代引き":
@@ -60,7 +56,6 @@ if st.button("メッセージを作成"):
     else:
         price_suffix = "（着払い送料並びに代引き手数料及び消費税込み）"
 
-    # 金額整形
     try:
         total_price = int(total_price_input.replace(",", ""))
         total_price_str = f"{total_price:,}"
@@ -68,13 +63,11 @@ if st.button("メッセージを作成"):
         st.error("金額の入力が正しくありません。数字だけ、またはカンマ付きで入力してください。")
         st.stop()
 
-    # 運送会社のリンク
     if carrier == "ヤマト運輸":
         tracking_link = f"https://jizen.kuronekoyamato.co.jp/jizen/servlet/crjz.b.NQ0010?id={tracking_number}"
     else:
         tracking_link = f"https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do?okurijoNo={tracking_number}"
 
-    # 本文作成
     if payment_method == "着払い":
         main_message = "パソコン修理のご期待にお応えすることが出来ず申し訳ございませんでした。\nお預かりのパソコンをご返却いたします。"
         repair_text = "修理中断"
@@ -84,6 +77,7 @@ if st.button("メッセージを作成"):
         repair_text = repair_detail
         check_text = "動作チェック"
 
+    # 作成されるメッセージ
     message = f"""お世話になっております。
 パソコン修理のルキテック　スタッフです。
 
@@ -112,13 +106,17 @@ if st.button("メッセージを作成"):
 今後ともよろしくお願いいたします。
 """
 
-    st.session_state.template = message
-    st.success("メッセージが作成されました！🎉")
+    # --- ブラウザコピーボタン対応 (HTML + JavaScript) ---
+    st.markdown(f"""
+    <textarea id="text-to-copy" rows="20" style="width:100%; font-size:16px;">{message}</textarea><br><br>
+    <button onclick="copyText()" style="font-size:16px; padding:8px 16px;">📋 コピーする</button>
 
-# 出来上がったメッセージを表示・コピー
-if 'template' in st.session_state and st.session_state.template:
-    st.text_area("完成したメッセージ（ここからコピーできます）", st.session_state.template, height=800)
-    
-    if st.button("📋 コピーする"):
-        pyperclip.copy(st.session_state.template)
-        st.success("メッセージをクリップボードにコピーしました！✨")
+    <script>
+    function copyText() {{
+      var copyText = document.getElementById("text-to-copy");
+      copyText.select();
+      document.execCommand("copy");
+      alert("コピーしました！");
+    }}
+    </script>
+    """, unsafe_allow_html=True)  # ←これが絶対必要！！
