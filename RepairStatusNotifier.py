@@ -97,7 +97,7 @@ if st.button("メッセージを作成"):
 ▼修理代金
 合計　　　　{total_price_str}円{price_suffix}
 
-{specified_date} {time_slot} 配達指定なので到着すると思いますので、{check_text}をお願いいたします。
+{specified_date} {time_slot} 配達予定となっております。{check_text}をお願いいたします。
 運送会社の都合により時間帯のご希望に添えない場合はあるので事前にご了承をお願いいたします。
 
 パソコン到着後、すぐに{check_text}してください。
