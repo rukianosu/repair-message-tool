@@ -54,9 +54,9 @@ if st.button("メッセージを作成"):
     if payment_method == "銀行振込":
         price_suffix = "（消費税込み）"
     elif payment_method == "代引き":
-        price_suffix = "（代引き手数料及び消費税込み）"
+        price_suffix = "（代引き手数料および消費税込み）"
     else:
-        price_suffix = "（着払い送料並びに代引き手数料及び消費税込み）"
+        price_suffix = "（着払い送料・代引き手数料および消費税込み）"
 
     # 金額整形
     try:
