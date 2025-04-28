@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import datetime, timedelta
 
-st.title("修理完了連絡用メッセージ作成ツール（コピーボタン付き）")
+st.title("修理完了連絡用メッセージ作成ツール")
 
 # 今日と明日の日付＋月
 today = datetime.today()
@@ -106,17 +106,5 @@ if st.button("メッセージを作成"):
 今後ともよろしくお願いいたします。
 """
 
-    # --- ブラウザコピーボタン対応 (HTML + JavaScript) ---
-    st.markdown(f"""
-    <textarea id="text-to-copy" rows="20" style="width:100%; font-size:16px;">{message}</textarea><br><br>
-    <button onclick="copyText()" style="font-size:16px; padding:8px 16px;">📋 コピーする</button>
-
-    <script>
-    function copyText() {{
-      var copyText = document.getElementById("text-to-copy");
-      copyText.select();
-      document.execCommand("copy");
-      alert("コピーしました！");
-    }}
-    </script>
-    """, unsafe_allow_html=True)  # ←これが絶対必要！！
+    # --- 作成したメッセージを普通に表示するだけ ---
+    st.text_area("完成したメッセージ（ここから手動でコピーしてください）", message, height=800)
