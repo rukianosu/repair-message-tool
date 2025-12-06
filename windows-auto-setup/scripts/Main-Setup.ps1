@@ -63,6 +63,8 @@ Windows 自動セットアップ完了
 ✓ Windows Update
 ✓ Google Chrome インストール
 ✓ Adobe Acrobat Reader インストール
+✓ PDFファイルをAdobe Readerで開く設定
+✓ BitLocker無効化（今後も自動で有効になりません）
 
 ログファイル: C:\AutoSetup\Logs\
 
@@ -99,6 +101,7 @@ function Get-SetupState {
     return @{
         WindowsUpdateCompleted = $false
         AppsInstalled = $false
+        BitLockerDisabled = $false
         SetupCompleted = $false
         LastRun = $null
     }
@@ -143,7 +146,7 @@ try {
     # ===========================================
     if (-not $state.WindowsUpdateCompleted) {
         Write-Log "==========================================="
-        Write-Log "ステップ 1/2: Windows Update"
+        Write-Log "ステップ 1/3: Windows Update"
         Write-Log "==========================================="
 
         $updateScript = "C:\AutoSetup\scripts\01-WindowsUpdate.ps1"
@@ -166,7 +169,7 @@ try {
     # ===========================================
     if (-not $state.AppsInstalled) {
         Write-Log "==========================================="
-        Write-Log "ステップ 2/2: アプリケーションインストール"
+        Write-Log "ステップ 2/3: アプリケーションインストール"
         Write-Log "==========================================="
 
         $appScript = "C:\AutoSetup\scripts\02-InstallApps.ps1"
@@ -184,7 +187,29 @@ try {
     }
 
     # ===========================================
-    # ステップ3: セットアップ完了処理
+    # ステップ3: BitLocker無効化
+    # ===========================================
+    if (-not $state.BitLockerDisabled) {
+        Write-Log "==========================================="
+        Write-Log "ステップ 3/3: BitLocker無効化"
+        Write-Log "==========================================="
+
+        $bitlockerScript = "C:\AutoSetup\scripts\03-DisableBitLocker.ps1"
+        if (Test-Path $bitlockerScript) {
+            & $bitlockerScript
+
+            $state.BitLockerDisabled = $true
+            Save-SetupState -State $state
+            Write-Log "BitLocker無効化が完了しました"
+        } else {
+            Write-Log "エラー: $bitlockerScript が見つかりません"
+        }
+    } else {
+        Write-Log "BitLockerは既に無効化されています（スキップ）"
+    }
+
+    # ===========================================
+    # ステップ4: セットアップ完了処理
     # ===========================================
     Write-Log "==========================================="
     Write-Log "セットアップ完了処理"

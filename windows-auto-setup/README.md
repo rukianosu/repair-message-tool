@@ -26,6 +26,12 @@ Windows初期化後のセットアップを完全自動化するシステムで�
 - Google Chrome（最新版）
 - Adobe Acrobat Reader（最新版）
 - サイレントインストール（画面操作不要）
+- PDFファイルをAdobe Readerで開く設定
+
+✅ **BitLocker自動無効化**
+- BitLockerを無効化
+- 今後の大型アップデートでも自動で有効にならないよう設定
+- お客様への引き渡し時に暗号化で困らない
 
 ✅ **完了通知**
 - ビープ音で完了を通知
@@ -44,7 +50,9 @@ windows-auto-setup/
 └── scripts/
     ├── Main-Setup.ps1             # メイン統合スクリプト
     ├── 01-WindowsUpdate.ps1       # Windows Update自動実行
-    └── 02-InstallApps.ps1         # アプリ自動インストール
+    ├── 02-InstallApps.ps1         # アプリ自動インストール
+    ├── 03-DisableBitLocker.ps1    # BitLocker無効化
+    └── Generate-Password.ps1      # パスワードエンコードヘルパー
 ```
 
 ---
