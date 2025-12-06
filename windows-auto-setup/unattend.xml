@@ -69,21 +69,9 @@
                         <DisplayName>Admin</DisplayName>
                         <Group>Administrators</Group>
                         <Password>
-                            <!--
-                            パスワード設定が必要です
-                            以下の手順でパスワードを設定してください：
-
-                            1. PowerShellを管理者として実行
-                            2. 以下のコマンドでパスワードをBase64エンコード：
-                               $password = "ここにパスワードを入力"
-                               $bytes = [System.Text.Encoding]::Unicode.GetBytes($password + "Password")
-                               [Convert]::ToBase64String($bytes)
-                            3. 出力された文字列を<Value>タグに貼り付け
-
-                            例: パスワードが "Admin@2024" の場合の設定例
-                            -->
-                            <Value>QQBkAG0AaQBuAEAAMgAwADIANABQAGEAcwBzAHcAbwByAGQA</Value>
-                            <PlainText>false</PlainText>
+                            <!-- パスワードなし -->
+                            <Value></Value>
+                            <PlainText>true</PlainText>
                         </Password>
                     </LocalAccount>
                 </LocalAccounts>
