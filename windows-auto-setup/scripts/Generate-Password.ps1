@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     unattend.xml用パスワード生成ヘルパースクリプト
 
