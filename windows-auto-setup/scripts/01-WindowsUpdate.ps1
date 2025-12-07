@@ -42,100 +42,136 @@ try {
         Start-Sleep -Seconds 5
     }
 
-    # Windows Update COM オブジェクトを使用した更新
-    Write-Log "Windows Update セッションを作成中..."
+    # 更新プログラムの確認とインストールを繰り返す
+    $totalInstalled = 0
+    $maxIterations = 10 # 無限ループ防止
+    $iteration = 0
 
-    $updateSession = New-Object -ComObject Microsoft.Update.Session
-    $updateSearcher = $updateSession.CreateUpdateSearcher()
+    do {
+        $iteration++
+        Write-Log "========================================="
+        Write-Log "更新サイクル ${iteration}/${maxIterations}"
+        Write-Log "========================================="
 
-    Write-Log "利用可能な更新プログラムを検索中..."
-    Write-Log "※この処理には数分かかる場合があります"
+        # Windows Update COM オブジェクトを使用した更新
+        Write-Log "Windows Update セッションを作成中..."
+        $updateSession = New-Object -ComObject Microsoft.Update.Session
+        $updateSearcher = $updateSession.CreateUpdateSearcher()
 
-    $searchResult = $updateSearcher.Search("IsInstalled=0 and Type='Software'")
+        Write-Log "利用可能な更新プログラムを検索中..."
+        Write-Log "※この処理には数分かかる場合があります。お待ちください..."
 
-    if ($searchResult.Updates.Count -eq 0) {
-        Write-Log "新しい更新プログラムはありません"
-        Write-Log "Windows Update完了"
-        exit 0
-    }
+        $searchResult = $updateSearcher.Search("IsInstalled=0 and Type='Software'")
 
-    Write-Log "見つかった更新プログラム: $($searchResult.Updates.Count)件"
-
-    # 更新プログラムのタイトルを表示
-    foreach ($update in $searchResult.Updates) {
-        Write-Log "  - $($update.Title)"
-    }
-
-    # 更新プログラムのダウンロード
-    Write-Log "----------------------------------------"
-    Write-Log "更新プログラムをダウンロード中..."
-    Write-Log "----------------------------------------"
-
-    $updatesToDownload = New-Object -ComObject Microsoft.Update.UpdateColl
-    foreach ($update in $searchResult.Updates) {
-        $updatesToDownload.Add($update) | Out-Null
-    }
-
-    $downloader = $updateSession.CreateUpdateDownloader()
-    $downloader.Updates = $updatesToDownload
-    $downloadResult = $downloader.Download()
-
-    Write-Log "ダウンロード完了"
-
-    # 更新プログラムのインストール
-    Write-Log "----------------------------------------"
-    Write-Log "更新プログラムをインストール中..."
-    Write-Log "※この処理には時間がかかる場合があります"
-    Write-Log "----------------------------------------"
-
-    $updatesToInstall = New-Object -ComObject Microsoft.Update.UpdateColl
-    foreach ($update in $searchResult.Updates) {
-        if ($update.IsDownloaded) {
-            $updatesToInstall.Add($update) | Out-Null
+        if ($searchResult.Updates.Count -eq 0) {
+            Write-Log "新しい更新プログラムはありません"
+            Write-Log "========================================="
+            Write-Log "すべての更新プログラムが完了しました"
+            Write-Log "合計インストール数: ${totalInstalled}件"
+            Write-Log "========================================="
+            break
         }
-    }
 
-    if ($updatesToInstall.Count -eq 0) {
-        Write-Log "インストール可能な更新プログラムがありません"
-        exit 0
-    }
+        Write-Log "見つかった更新プログラム: $($searchResult.Updates.Count)件"
 
-    $installer = $updateSession.CreateUpdateInstaller()
-    $installer.Updates = $updatesToInstall
-    $installResult = $installer.Install()
+        # 更新プログラムのタイトルを表示
+        $updateNum = 1
+        foreach ($update in $searchResult.Updates) {
+            Write-Log "  ${updateNum}. $($update.Title)"
+            $updateNum++
+        }
 
-    Write-Log "インストール完了: $($updatesToInstall.Count)件"
-    Write-Log "インストール結果コード: $($installResult.ResultCode)"
-
-    # 再起動が必要かチェック
-    if ($installResult.RebootRequired) {
+        # 更新プログラムのダウンロード
         Write-Log "----------------------------------------"
-        Write-Log "再起動が必要です"
+        Write-Log "更新プログラムをダウンロード中..."
+        Write-Log "※大きなファイルの場合、時間がかかります"
         Write-Log "----------------------------------------"
 
-        # 再起動後に自動的に続行するためのタスクを作成
-        Write-Log "再起動後の自動実行タスクを作成中..."
-        $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-ExecutionPolicy Bypass -File C:\AutoSetup\scripts\Main-Setup.ps1"
-        $trigger = New-ScheduledTaskTrigger -AtLogOn
-        $principal = New-ScheduledTaskPrincipal -UserId "owner" -RunLevel Highest
-        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+        $updatesToDownload = New-Object -ComObject Microsoft.Update.UpdateColl
+        foreach ($update in $searchResult.Updates) {
+            $updatesToDownload.Add($update) | Out-Null
+        }
 
-        Register-ScheduledTask -TaskName "AutoSetup-Continue" -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force
-        Write-Log "自動実行タスクを作成しました"
+        $downloader = $updateSession.CreateUpdateDownloader()
+        $downloader.Updates = $updatesToDownload
 
-        Write-Log "10秒後に再起動します..."
-        Start-Sleep -Seconds 10
-        Restart-Computer -Force
-        exit 0
-    } else {
-        Write-Log "再起動は不要です"
+        Write-Log "ダウンロード開始... ($($updatesToDownload.Count)件)"
+        $downloadResult = $downloader.Download()
+        Write-Log "ダウンロード完了 (結果コード: $($downloadResult.ResultCode))"
+
+        # 更新プログラムのインストール
         Write-Log "----------------------------------------"
-        Write-Log "Windows Update完了"
+        Write-Log "更新プログラムをインストール中..."
+        Write-Log "※この処理には長時間かかる場合があります"
         Write-Log "----------------------------------------"
+
+        $updatesToInstall = New-Object -ComObject Microsoft.Update.UpdateColl
+        foreach ($update in $searchResult.Updates) {
+            if ($update.IsDownloaded) {
+                $updatesToInstall.Add($update) | Out-Null
+            }
+        }
+
+        if ($updatesToInstall.Count -eq 0) {
+            Write-Log "警告: ダウンロード済みの更新プログラムがありません"
+            Write-Log "次のサイクルで再試行します..."
+            Start-Sleep -Seconds 5
+            continue
+        }
+
+        $installer = $updateSession.CreateUpdateInstaller()
+        $installer.Updates = $updatesToInstall
+
+        Write-Log "インストール開始... ($($updatesToInstall.Count)件)"
+        $installResult = $installer.Install()
+
+        Write-Log "インストール完了: $($updatesToInstall.Count)件"
+        Write-Log "インストール結果コード: $($installResult.ResultCode)"
+        $totalInstalled += $updatesToInstall.Count
+
+        # 再起動が必要かチェック
+        if ($installResult.RebootRequired) {
+            Write-Log "========================================="
+            Write-Log "再起動が必要です"
+            Write-Log "========================================="
+            Write-Log "これまでにインストールした更新: ${totalInstalled}件"
+
+            # 再起動後に自動的に続行するためのタスクを作成
+            Write-Log "再起動後の自動実行タスクを作成中..."
+            $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-ExecutionPolicy Bypass -File C:\AutoSetup\scripts\Main-Setup.ps1"
+            $trigger = New-ScheduledTaskTrigger -AtLogOn
+            $principal = New-ScheduledTaskPrincipal -UserId "owner" -RunLevel Highest
+            $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+
+            Register-ScheduledTask -TaskName "AutoSetup-Continue" -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force
+            Write-Log "自動実行タスクを作成しました"
+
+            Write-Log "10秒後に再起動します..."
+            Write-Log "再起動後、自動的にWindows Updateが続行されます"
+            Start-Sleep -Seconds 10
+            Restart-Computer -Force
+            exit 0
+        } else {
+            Write-Log "再起動は不要です"
+            Write-Log "次のサイクルで更新を確認します..."
+            Start-Sleep -Seconds 3
+        }
+
+    } while ($iteration -lt $maxIterations)
+
+    if ($iteration -ge $maxIterations) {
+        Write-Log "========================================="
+        Write-Log "警告: 最大繰り返し回数に到達しました"
+        Write-Log "まだ更新がある可能性があります"
+        Write-Log "設定から手動で確認してください"
+        Write-Log "========================================="
     }
 
 } catch {
-    Write-Log "エラーが発生しました: $($_.Exception.Message)"
+    Write-Log "========================================="
+    Write-Log "エラーが発生しました"
+    Write-Log "========================================="
+    Write-Log "エラー内容: $($_.Exception.Message)"
     Write-Log "スタックトレース: $($_.ScriptStackTrace)"
     Write-Log ""
     Write-Log "========================================="
