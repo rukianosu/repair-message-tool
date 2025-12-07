@@ -65,8 +65,8 @@
             <UserAccounts>
                 <LocalAccounts>
                     <LocalAccount wcm:action="add">
-                        <Name>Admin</Name>
-                        <DisplayName>Admin</DisplayName>
+                        <Name>owner</Name>
+                        <DisplayName>owner</DisplayName>
                         <Group>Administrators</Group>
                         <Password>
                             <!-- パスワードなし -->

@@ -12,7 +12,7 @@ Windows初期化後のセットアップを完全自動化するシステムで�
 
 ✅ **OOBE自動スキップ**
 - Microsoftアカウント不要
-- ローカルアカウント自動作成（ユーザー名: Admin）
+- ローカルアカウント自動作成（ユーザー名: owner）
 - 地域・言語設定（日本/日本語）
 - プライバシー設定を全てオフ
 
@@ -319,7 +319,7 @@ Get-ScheduledTask -TaskName "AutoSetup-Continue"
 # 存在しない場合は再作成
 $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-ExecutionPolicy Bypass -File C:\AutoSetup\scripts\Main-Setup.ps1"
 $trigger = New-ScheduledTaskTrigger -AtLogOn
-$principal = New-ScheduledTaskPrincipal -UserId "Admin" -RunLevel Highest
+$principal = New-ScheduledTaskPrincipal -UserId "owner" -RunLevel Highest
 Register-ScheduledTask -TaskName "AutoSetup-Continue" -Action $action -Trigger $trigger -Principal $principal -Force
 ```
 
