@@ -65,6 +65,7 @@ Windows 自動セットアップ完了
 ✓ Adobe Acrobat Reader インストール
 ✓ PDFファイルをAdobe Readerで開く設定
 ✓ BitLocker無効化（今後も自動で有効になりません）
+✓ パスワード有効期限無効化
 
 ログファイル: C:\AutoSetup\Logs\
 
@@ -206,6 +207,27 @@ try {
         }
     } else {
         Write-Log "BitLockerは既に無効化されています（スキップ）"
+    }
+
+    # ===========================================
+    # パスワード有効期限の無効化
+    # ===========================================
+    Write-Log "----------------------------------------"
+    Write-Log "パスワード有効期限の無効化"
+    Write-Log "----------------------------------------"
+
+    try {
+        # ユーザー「owner」のパスワード有効期限を無効化
+        Write-Log "ユーザー「owner」のパスワード有効期限を無効化中..."
+        $result = wmic useraccount where "name='owner'" set PasswordExpires=false 2>&1
+
+        # 全アカウントのパスワード有効期限を無制限に設定
+        Write-Log "全アカウントのパスワード有効期限を無制限に設定中..."
+        net accounts /maxpwage:unlimited | Out-Null
+
+        Write-Log "✓ パスワード有効期限を無効化しました"
+    } catch {
+        Write-Log "警告: パスワード有効期限の無効化に失敗しました: $($_.Exception.Message)"
     }
 
     # ===========================================
