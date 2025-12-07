@@ -78,18 +78,30 @@ try {
     Write-Log "Google Chrome のインストール"
     Write-Log "----------------------------------------"
 
+    $chromeInstalled = $false
+
     if ($useWinget) {
         try {
             Write-Log "WingetでGoogle Chromeをインストール中..."
-            winget install Google.Chrome --silent --accept-package-agreements --accept-source-agreements
-            Write-Log "Google Chrome のインストール完了（Winget経由）"
+            $result = winget install Google.Chrome --silent --accept-package-agreements --accept-source-agreements 2>&1
+
+            # インストール結果を確認
+            Start-Sleep -Seconds 3
+            $chromePath = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+            if (Test-Path $chromePath) {
+                Write-Log "Google Chrome のインストール完了（Winget経由）"
+                $chromeInstalled = $true
+            } else {
+                Write-Log "Wingetでのインストールに失敗しました"
+                $useWinget = $false
+            }
         } catch {
             Write-Log "Wingetでのインストールに失敗: $($_.Exception.Message)"
             $useWinget = $false
         }
     }
 
-    if (-not $useWinget) {
+    if (-not $chromeInstalled) {
         Write-Log "直接ダウンロードでインストールします"
         $chromeUrl = "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
         $chromeInstaller = Join-Path $TempFolder "chrome_installer.exe"
@@ -100,6 +112,7 @@ try {
 
             if ($process.ExitCode -eq 0) {
                 Write-Log "Google Chrome のインストール完了"
+                $chromeInstalled = $true
             } else {
                 Write-Log "Google Chrome のインストール失敗。終了コード: $($process.ExitCode)"
             }
@@ -117,18 +130,42 @@ try {
     Write-Log "Adobe Acrobat Reader のインストール"
     Write-Log "----------------------------------------"
 
+    $adobeInstalled = $false
+
     if ($useWinget) {
         try {
             Write-Log "WingetでAdobe Acrobat Readerをインストール中..."
-            winget install Adobe.Acrobat.Reader.64-bit --silent --accept-package-agreements --accept-source-agreements
-            Write-Log "Adobe Acrobat Reader のインストール完了（Winget経由）"
+            $result = winget install Adobe.Acrobat.Reader.64-bit --silent --accept-package-agreements --accept-source-agreements 2>&1
+
+            # インストール結果を確認
+            Start-Sleep -Seconds 5
+            $adobePaths = @(
+                "C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe",
+                "C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe",
+                "C:\Program Files\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe"
+            )
+
+            $found = $false
+            foreach ($path in $adobePaths) {
+                if (Test-Path $path) {
+                    Write-Log "Adobe Acrobat Reader のインストール完了（Winget経由）"
+                    $adobeInstalled = $true
+                    $found = $true
+                    break
+                }
+            }
+
+            if (-not $found) {
+                Write-Log "Wingetでのインストールに失敗しました"
+                $useWinget = $false
+            }
         } catch {
             Write-Log "Wingetでのインストールに失敗: $($_.Exception.Message)"
             $useWinget = $false
         }
     }
 
-    if (-not $useWinget) {
+    if (-not $adobeInstalled) {
         Write-Log "直接ダウンロードでインストールします"
 
         # Adobe Reader FTPサイトから最新版をダウンロード
@@ -145,6 +182,7 @@ try {
 
             if ($process.ExitCode -eq 0) {
                 Write-Log "Adobe Acrobat Reader のインストール完了"
+                $adobeInstalled = $true
             } else {
                 Write-Log "Adobe Acrobat Reader のインストール失敗。終了コード: $($process.ExitCode)"
             }
