@@ -133,40 +133,34 @@ C:\AutoSetup\scripts\Main-Setup.ps1
 
 ---
 
-## ⚙️ パスワード設定（重要）
+## ⚙️ ユーザーアカウント設定
 
-`unattend.xml` でローカルアカウントのパスワードを設定する必要があります。
+### デフォルト設定
 
-### パスワードのエンコード方法
+- **ユーザー名**: owner
+- **パスワード**: なし（空欄）
+- **権限**: 管理者（Administrators グループ）
+- **パスワード有効期限**: 無効
 
-1. PowerShellを管理者として実行
+### パスワードを設定したい場合
 
-2. 以下のコマンドを実行:
+お客様への引き渡し時にパスワードを設定したい場合は、`unattend.xml` を編集してください。
+
+1. PowerShellで以下のコマンドを実行してパスワードをエンコード:
    ```powershell
-   $password = "ここに設定したいパスワードを入力"  # 例: Admin@2024
+   $password = "設定したいパスワード"
    $bytes = [System.Text.Encoding]::Unicode.GetBytes($password + "Password")
    $encoded = [Convert]::ToBase64String($bytes)
    Write-Host "エンコード済みパスワード: $encoded"
    ```
 
-3. 出力されたBase64文字列をコピー
-
-4. `unattend.xml` の以下の部分を編集:
+2. `unattend.xml` の以下の部分を編集:
    ```xml
    <Password>
        <Value>ここにエンコードされたパスワードを貼り付け</Value>
        <PlainText>false</PlainText>
    </Password>
    ```
-
-### パスワード例
-
-| パスワード | Base64エンコード値 |
-|-----------|-------------------|
-| Admin@2024 | `QQBkAG0AaQBuAEAAMgAwADIANABQAGEAcwBzAHcAbwByAGQA` |
-| Password123! | `UABhAHMAcwB3AG8AcgBkADEAMgAzACEAUABhAHMAcwB3AG8AcgBkAA==` |
-
-**⚠️ セキュリティ警告**: 本番環境では強力なパスワードを設定してください。
 
 ---
 
