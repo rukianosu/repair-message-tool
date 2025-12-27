@@ -2,177 +2,258 @@
 
 <#
 .SYNOPSIS
-    BitLocker無効化スクリプト
+    BitLocker / デバイス暗号化 完全停止・復号スクリプト（ルキテック納品基準準拠）
 
 .DESCRIPTION
-    このスクリプトは以下を実行します：
-    1. BitLockerの無効化（既に有効な場合）
-    2. BitLockerの自動暗号化を無効化
-    3. 将来の大型アップデートでBitLockerが自動で有効にならないよう設定
+    Windows 初期設定（OOBE）後に自動で走る BitLocker / デバイス暗号化を確実に停止（復号）し、
+    納品基準である FullyDecrypted を満たしているか判定してログを残します。
+
+    納品基準（ルキテックルール）：
+    - 納品OK：VolumeStatus = FullyDecrypted かつ EncryptionPercentage = 0
+    - それ以外は納品NG
 
 .NOTES
-    管理者権限が必要です
+    管理者権限が必須です
+    対象：OSドライブ C: のみ
 #>
 
 # ログファイルパス
-$LogFile = "C:\AutoSetup\Logs\BitLocker.log"
+$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$LogFile = "C:\RukiTech\Logs\BitLockerGuard_$timestamp.txt"
 $null = New-Item -ItemType Directory -Force -Path (Split-Path $LogFile)
 
 # ログ記録関数
 function Write-Log {
-    param([string]$Message)
+    param(
+        [string]$Message,
+        [string]$Level = "INFO"  # INFO, WARN, ERROR, OK, NG
+    )
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $logMessage = "[$timestamp] $Message"
-    Write-Host $logMessage
+    $logMessage = "[$timestamp] [$Level] $Message"
+
+    # コンソール出力（色分け）
+    switch ($Level) {
+        "OK"    { Write-Host $logMessage -ForegroundColor Green }
+        "NG"    { Write-Host $logMessage -ForegroundColor Red }
+        "WARN"  { Write-Host $logMessage -ForegroundColor Yellow }
+        "ERROR" { Write-Host $logMessage -ForegroundColor Red }
+        default { Write-Host $logMessage }
+    }
+
+    # ファイル出力
     Add-Content -Path $LogFile -Value $logMessage
 }
 
-Write-Log "========================================="
-Write-Log "BitLocker無効化処理を開始します"
-Write-Log "========================================="
+# 納品基準チェック関数
+function Test-DeliveryStandard {
+    param($Volume)
 
-try {
-    # ========================================
-    # 1. 現在のBitLocker状態を確認
-    # ========================================
-    Write-Log "BitLockerの状態を確認中..."
-
-    $volumes = Get-BitLockerVolume -ErrorAction SilentlyContinue
-
-    if ($volumes) {
-        foreach ($volume in $volumes) {
-            Write-Log "ドライブ $($volume.MountPoint): $($volume.ProtectionStatus)"
-
-            if ($volume.ProtectionStatus -eq "On") {
-                Write-Log "BitLockerが有効になっています。無効化します..."
-                try {
-                    Disable-BitLocker -MountPoint $volume.MountPoint
-                    Write-Log "✓ ドライブ $($volume.MountPoint) のBitLockerを無効化しました"
-                } catch {
-                    Write-Log "警告: ドライブ $($volume.MountPoint) のBitLocker無効化に失敗: $($_.Exception.Message)"
-                }
-            } else {
-                Write-Log "ドライブ $($volume.MountPoint) のBitLockerは既に無効です"
-            }
-        }
-    } else {
-        Write-Log "BitLockerが有効なドライブはありません"
-    }
-
-    # ========================================
-    # 2. レジストリ設定でBitLockerの自動暗号化を無効化
-    # ========================================
-    Write-Log "----------------------------------------"
-    Write-Log "BitLocker自動暗号化の無効化"
-    Write-Log "----------------------------------------"
-
-    # BitLockerの自動デバイス暗号化を無効化
-    $regPath1 = "HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker"
-    if (-not (Test-Path $regPath1)) {
-        New-Item -Path $regPath1 -Force | Out-Null
-        Write-Log "レジストリキーを作成: $regPath1"
-    }
-
-    Set-ItemProperty -Path $regPath1 -Name "PreventDeviceEncryption" -Value 1 -Type DWord -Force
-    Write-Log "✓ BitLocker自動暗号化を無効化しました (PreventDeviceEncryption = 1)"
-
-    # デバイス暗号化ポリシーの無効化
-    $regPath2 = "HKLM:\SOFTWARE\Policies\Microsoft\FVE"
-    if (-not (Test-Path $regPath2)) {
-        New-Item -Path $regPath2 -Force | Out-Null
-        Write-Log "レジストリキーを作成: $regPath2"
-    }
-
-    # OS ドライブの暗号化を無効化
-    Set-ItemProperty -Path $regPath2 -Name "EnableBDEWithNoTPM" -Value 0 -Type DWord -Force
-    Set-ItemProperty -Path $regPath2 -Name "UseAdvancedStartup" -Value 0 -Type DWord -Force
-    Set-ItemProperty -Path $regPath2 -Name "UseTPM" -Value 0 -Type DWord -Force
-    Set-ItemProperty -Path $regPath2 -Name "UseTPMPIN" -Value 0 -Type DWord -Force
-    Set-ItemProperty -Path $regPath2 -Name "UseTPMKey" -Value 0 -Type DWord -Force
-    Set-ItemProperty -Path $regPath2 -Name "UseTPMKeyPIN" -Value 0 -Type DWord -Force
-    Write-Log "✓ BitLockerポリシー設定を無効化しました"
-
-    # ========================================
-    # 3. Windows Updateによる自動有効化を防止
-    # ========================================
-    Write-Log "----------------------------------------"
-    Write-Log "Windows Update後の自動有効化を防止"
-    Write-Log "----------------------------------------"
-
-    # デバイス暗号化の自動有効化を防止
-    $regPath3 = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DeviceEncryption"
-    if (-not (Test-Path $regPath3)) {
-        New-Item -Path $regPath3 -Force | Out-Null
-        Write-Log "レジストリキーを作成: $regPath3"
-    }
-
-    Set-ItemProperty -Path $regPath3 -Name "AllowDeviceEncryption" -Value 0 -Type DWord -Force
-    Write-Log "✓ デバイス暗号化の自動有効化を防止しました"
-
-    # ========================================
-    # 4. Windows 11の自動デバイス暗号化を無効化
-    # ========================================
-    Write-Log "----------------------------------------"
-    Write-Log "Windows 11自動デバイス暗号化の無効化"
-    Write-Log "----------------------------------------"
-
-    # Windows 11特有の自動暗号化設定
-    $regPath4 = "HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker\AutoEncrypt"
-    if (-not (Test-Path $regPath4)) {
-        New-Item -Path $regPath4 -Force | Out-Null
-        Write-Log "レジストリキーを作成: $regPath4"
-    }
-
-    Set-ItemProperty -Path $regPath4 -Name "AllowStandardUserEncryption" -Value 0 -Type DWord -Force
-    Write-Log "✓ 標準ユーザーによる暗号化を無効化しました"
-
-    # ========================================
-    # 5. TPMの自動プロビジョニングを無効化
-    # ========================================
-    Write-Log "----------------------------------------"
-    Write-Log "TPM自動プロビジョニングの無効化"
-    Write-Log "----------------------------------------"
-
-    $regPath5 = "HKLM:\SOFTWARE\Policies\Microsoft\TPM"
-    if (-not (Test-Path $regPath5)) {
-        New-Item -Path $regPath5 -Force | Out-Null
-        Write-Log "レジストリキーを作成: $regPath5"
-    }
-
-    Set-ItemProperty -Path $regPath5 -Name "OSManagedAuthLevel" -Value 0 -Type DWord -Force
-    Write-Log "✓ TPM自動プロビジョニングを無効化しました"
-
-    # ========================================
-    # 6. 設定の確認
-    # ========================================
-    Write-Log "----------------------------------------"
-    Write-Log "設定確認"
-    Write-Log "----------------------------------------"
-
-    $vol = Get-BitLockerVolume -MountPoint "C:" -ErrorAction SilentlyContinue
-    if ($vol) {
-        Write-Log "Cドライブ BitLocker状態: $($vol.ProtectionStatus)"
-        Write-Log "暗号化率: $($vol.EncryptionPercentage)%"
-    }
-
-    $preventEncryption = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker" -Name "PreventDeviceEncryption" -ErrorAction SilentlyContinue
-    if ($preventEncryption) {
-        Write-Log "PreventDeviceEncryption: $($preventEncryption.PreventDeviceEncryption)"
-    }
-
-    Write-Log "========================================="
-    Write-Log "BitLocker無効化完了"
-    Write-Log "========================================="
-    Write-Log ""
-    Write-Log "設定内容:"
-    Write-Log "- BitLockerを無効化しました"
-    Write-Log "- 自動暗号化を無効化しました"
-    Write-Log "- Windows Update後も自動で有効になりません"
-
-} catch {
-    Write-Log "エラーが発生しました: $($_.Exception.Message)"
-    Write-Log "スタックトレース: $($_.ScriptStackTrace)"
-    throw
+    $isOK = ($Volume.VolumeStatus -eq "FullyDecrypted") -and ($Volume.EncryptionPercentage -eq 0)
+    return $isOK
 }
 
-Write-Log "BitLocker無効化処理を終了します"
+Write-Log "=========================================" "INFO"
+Write-Log "BitLocker / デバイス暗号化 完全停止スクリプト" "INFO"
+Write-Log "ルキテック納品基準準拠" "INFO"
+Write-Log "=========================================" "INFO"
+
+try {
+    # 管理者権限チェック
+    $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+    $isAdmin = $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+    if (-not $isAdmin) {
+        Write-Log "エラー: 管理者権限で実行してください" "ERROR"
+        Write-Log "右クリック → 「管理者として実行」で起動してください" "ERROR"
+        exit 1
+    }
+
+    Write-Log "管理者権限確認：OK" "INFO"
+
+    # C:ドライブのBitLocker状態を取得
+    Write-Log "C:ドライブのBitLocker状態を取得中..." "INFO"
+
+    try {
+        $volume = Get-BitLockerVolume -MountPoint "C:" -ErrorAction Stop
+    } catch {
+        Write-Log "BitLocker機能が利用できません（Homeエディション等）" "WARN"
+        Write-Log "デバイス暗号化の状態を確認します..." "INFO"
+
+        # Windows 11のデバイス暗号化を無効化
+        try {
+            $regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker"
+            if (-not (Test-Path $regPath)) {
+                New-Item -Path $regPath -Force | Out-Null
+            }
+            Set-ItemProperty -Path $regPath -Name "PreventDeviceEncryption" -Value 1 -Type DWord -Force
+            Write-Log "デバイス暗号化の自動有効化を無効化しました" "OK"
+            Write-Log "納品判定：OK（BitLocker機能なし）" "OK"
+            exit 0
+        } catch {
+            Write-Log "エラー: $($_.Exception.Message)" "ERROR"
+            exit 1
+        }
+    }
+
+    Write-Log "----------------------------------------" "INFO"
+    Write-Log "現在の状態：" "INFO"
+    Write-Log "  VolumeStatus: $($volume.VolumeStatus)" "INFO"
+    Write-Log "  EncryptionPercentage: $($volume.EncryptionPercentage)%" "INFO"
+    Write-Log "  ProtectionStatus: $($volume.ProtectionStatus)" "INFO"
+    Write-Log "----------------------------------------" "INFO"
+
+    # ========================================
+    # 判定ロジック
+    # ========================================
+
+    # A) すでに解除済み
+    if (Test-DeliveryStandard -Volume $volume) {
+        Write-Log "=========================================" "OK"
+        Write-Log "納品判定：OK" "OK"
+        Write-Log "C:ドライブは完全に復号されています" "OK"
+        Write-Log "VolumeStatus = FullyDecrypted" "OK"
+        Write-Log "EncryptionPercentage = 0%" "OK"
+        Write-Log "=========================================" "OK"
+
+        # 念のため自動暗号化を無効化
+        Write-Log "自動暗号化の無効化設定を実行します..." "INFO"
+        $regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker"
+        if (-not (Test-Path $regPath)) {
+            New-Item -Path $regPath -Force | Out-Null
+        }
+        Set-ItemProperty -Path $regPath -Name "PreventDeviceEncryption" -Value 1 -Type DWord -Force
+        Write-Log "自動暗号化を無効化しました" "OK"
+
+        exit 0
+    }
+
+    # B) 暗号化中／準備中
+    if ($volume.VolumeStatus -eq "EncryptionInProgress" -or $volume.EncryptionPercentage -gt 0) {
+        Write-Log "=========================================" "WARN"
+        Write-Log "警告：BitLockerが暗号化中です" "WARN"
+        Write-Log "暗号化率: $($volume.EncryptionPercentage)%" "WARN"
+        Write-Log "即座に停止（復号）を開始します" "WARN"
+        Write-Log "=========================================" "WARN"
+
+        # BitLockerを無効化（復号開始）
+        Write-Log "Disable-BitLocker を実行中..." "INFO"
+        try {
+            Disable-BitLocker -MountPoint "C:" -ErrorAction Stop
+            Write-Log "Disable-BitLocker 実行成功" "OK"
+        } catch {
+            Write-Log "エラー: Disable-BitLocker に失敗しました" "ERROR"
+            Write-Log "エラー詳細: $($_.Exception.Message)" "ERROR"
+            Write-Log "納品判定：NG（復号開始失敗）" "NG"
+            exit 1
+        }
+
+        # 状態を再取得
+        Start-Sleep -Seconds 3
+        $volume = Get-BitLockerVolume -MountPoint "C:"
+
+        Write-Log "----------------------------------------" "INFO"
+        Write-Log "復号開始後の状態：" "INFO"
+        Write-Log "  VolumeStatus: $($volume.VolumeStatus)" "INFO"
+        Write-Log "  EncryptionPercentage: $($volume.EncryptionPercentage)%" "INFO"
+        Write-Log "----------------------------------------" "INFO"
+
+        if ($volume.VolumeStatus -eq "DecryptionInProgress") {
+            Write-Log "復号処理が開始されました" "OK"
+            # C) 復号中の処理へ
+        } elseif (Test-DeliveryStandard -Volume $volume) {
+            Write-Log "即座に復号が完了しました" "OK"
+            Write-Log "納品判定：OK" "OK"
+            exit 0
+        } else {
+            Write-Log "警告: 予期しない状態です" "WARN"
+            Write-Log "復号監視を続行します..." "INFO"
+        }
+    }
+
+    # C) 復号中
+    if ($volume.VolumeStatus -eq "DecryptionInProgress") {
+        Write-Log "=========================================" "INFO"
+        Write-Log "復号処理を監視します" "INFO"
+        Write-Log "最大監視時間: 60分" "INFO"
+        Write-Log "確認間隔: 30秒" "INFO"
+        Write-Log "=========================================" "INFO"
+
+        $maxWaitMinutes = 60
+        $intervalSeconds = 30
+        $maxIterations = ($maxWaitMinutes * 60) / $intervalSeconds
+        $iteration = 0
+
+        while ($iteration -lt $maxIterations) {
+            $iteration++
+            $elapsedMinutes = [math]::Round(($iteration * $intervalSeconds) / 60, 1)
+
+            Write-Log "監視中 [$elapsedMinutes 分経過] 暗号化率: $($volume.EncryptionPercentage)%" "INFO"
+
+            # 納品基準を満たしているかチェック
+            if (Test-DeliveryStandard -Volume $volume) {
+                Write-Log "=========================================" "OK"
+                Write-Log "復号完了！" "OK"
+                Write-Log "経過時間: $elapsedMinutes 分" "OK"
+                Write-Log "納品判定：OK" "OK"
+                Write-Log "VolumeStatus = FullyDecrypted" "OK"
+                Write-Log "EncryptionPercentage = 0%" "OK"
+                Write-Log "=========================================" "OK"
+
+                # 自動暗号化を無効化
+                $regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker"
+                if (-not (Test-Path $regPath)) {
+                    New-Item -Path $regPath -Force | Out-Null
+                }
+                Set-ItemProperty -Path $regPath -Name "PreventDeviceEncryption" -Value 1 -Type DWord -Force
+                Write-Log "自動暗号化を無効化しました" "OK"
+
+                exit 0
+            }
+
+            # まだ復号中
+            Start-Sleep -Seconds $intervalSeconds
+            $volume = Get-BitLockerVolume -MountPoint "C:"
+        }
+
+        # タイムアウト
+        Write-Log "=========================================" "NG"
+        Write-Log "タイムアウト：60分以内に復号が完了しませんでした" "NG"
+        Write-Log "現在の暗号化率: $($volume.EncryptionPercentage)%" "NG"
+        Write-Log "納品判定：NG（復号中のため納品不可）" "NG"
+        Write-Log "=========================================" "NG"
+        Write-Log "推奨アクション：" "WARN"
+        Write-Log "1. 復号が完了するまで待機してください" "WARN"
+        Write-Log "2. 電源を入れたまま放置してください" "WARN"
+        Write-Log "3. 復号完了後、再度このスクリプトを実行してください" "WARN"
+        exit 1
+    }
+
+    # D) Suspended / Locked / その他
+    Write-Log "=========================================" "NG"
+    Write-Log "納品判定：NG" "NG"
+    Write-Log "予期しない状態です" "NG"
+    Write-Log "VolumeStatus: $($volume.VolumeStatus)" "NG"
+    Write-Log "EncryptionPercentage: $($volume.EncryptionPercentage)%" "NG"
+    Write-Log "=========================================" "NG"
+    Write-Log "推奨アクション：" "WARN"
+
+    if ($volume.ProtectionStatus -eq "On") {
+        Write-Log "1. BitLockerが有効になっています" "WARN"
+        Write-Log "2. 手動で無効化してください：" "WARN"
+        Write-Log "   コントロールパネル → BitLocker → 無効化" "WARN"
+    } else {
+        Write-Log "1. 状態を確認してください" "WARN"
+        Write-Log "2. システムを再起動してください" "WARN"
+        Write-Log "3. 再度このスクリプトを実行してください" "WARN"
+    }
+
+    exit 1
+
+} catch {
+    Write-Log "=========================================" "ERROR"
+    Write-Log "予期しないエラーが発生しました" "ERROR"
+    Write-Log "エラー内容: $($_.Exception.Message)" "ERROR"
+    Write-Log "スタックトレース: $($_.ScriptStackTrace)" "ERROR"
+    Write-Log "=========================================" "ERROR"
+    exit 1
+}
