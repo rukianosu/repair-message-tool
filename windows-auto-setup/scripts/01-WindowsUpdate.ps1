@@ -58,13 +58,28 @@ try {
         $updateSession = New-Object -ComObject Microsoft.Update.Session
         $updateSearcher = $updateSession.CreateUpdateSearcher()
 
+        # Microsoft Updateカタログを有効化（より広範な更新プログラムを検索）
+        Write-Log "Microsoft Updateカタログを有効化中..."
+        try {
+            $updateSearcher.ServerSelection = 2  # 2 = MicrosoftUpdate
+            $updateSearcher.ServiceID = '7971f918-a847-4430-9279-4a52d1efe18d'
+            Write-Log "Microsoft Updateカタログを使用します"
+        } catch {
+            Write-Log "警告: Microsoft Updateカタログの有効化に失敗しました。Windows Updateのみ使用します。"
+        }
+
         Write-Log "利用可能な更新プログラムを検索中..."
+        Write-Log "検索対象: ソフトウェア更新のみ（ドライバー更新は除外）"
         Write-Log "※この処理には数分かかる場合があります。お待ちください..."
 
-        $searchResult = $updateSearcher.Search("IsInstalled=0 and Type='Software'")
+        # 検索条件：
+        # - IsInstalled=0: 未インストールの更新
+        # - Type='Software': ソフトウェア更新のみ（ドライバーは除外）
+        # - IsHidden=0: 非表示でない更新（通常必要な更新のみ）
+        $searchResult = $updateSearcher.Search("IsInstalled=0 and Type='Software' and IsHidden=0")
 
         if ($searchResult.Updates.Count -eq 0) {
-            Write-Log "新しい更新プログラムはありません"
+            Write-Log "新しい更新プログラムはありません（ソフトウェア更新のみ検索）"
             Write-Log "========================================="
             Write-Log "すべての更新プログラムが完了しました"
             Write-Log "合計インストール数: ${totalInstalled}件"
