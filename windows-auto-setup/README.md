@@ -47,6 +47,7 @@ windows-auto-setup/
 ├── README.md                      # このファイル
 ├── USB-Setup-Guide.md             # USB起動ディスク作成手順
 ├── unattend.xml                   # OOBE自動化設定ファイル
+├── セットアップ実行.bat            # ワンクリック実行バッチファイル（既存Windows用）
 └── scripts/
     ├── Main-Setup.ps1             # メイン統合スクリプト
     ├── 01-WindowsUpdate.ps1       # Windows Update自動実行
@@ -76,25 +77,40 @@ Windows 11インストール時にOOBEから完全自動化します。
 
 ---
 
-### 方法2: 初回起動時に手動実行
+### 方法2: 既存のWindowsで実行（バッチファイル使用・推奨）
 
 すでにWindows 11がインストール済みの場合の実行方法です。
 
-#### ステップ1: ファイルの配置
+#### 📌 簡単実行（バッチファイル使用）
+
+**最も簡単な方法です。USBメモリまたはダウンロードしたフォルダから直接実行できます。**
 
 1. このリポジトリをダウンロード:
-   ```powershell
+   ```
+   USBメモリにコピー、または
    git clone https://github.com/your-repo/windows-auto-setup.git
-   # または ZIPでダウンロードして解凍
    ```
 
-2. スクリプトを `C:\AutoSetup` に配置:
-   ```powershell
-   # PowerShellまたはコマンドプロンプトで実行
-   xcopy /E /I /Y "windows-auto-setup\scripts" "C:\AutoSetup\scripts"
-   ```
+2. **`セットアップ実行.bat` を右クリック → 「管理者として実行」**
 
-#### ステップ2: PowerShell実行ポリシーの変更
+   これだけです！バッチファイルが自動的に以下を実行します:
+   - 管理者権限の確認
+   - スクリプトを `C:\AutoSetup` にコピー
+   - PowerShell実行ポリシーの変更
+   - メインセットアップスクリプトの起動
+
+#### 💻 手動実行（PowerShellコマンド使用）
+
+バッチファイルを使わず、手動でコマンドを実行したい場合:
+
+**ステップ1: ファイルの配置**
+
+```powershell
+# スクリプトを C:\AutoSetup に配置
+xcopy /E /I /Y "windows-auto-setup\scripts" "C:\AutoSetup\scripts"
+```
+
+**ステップ2: PowerShell実行ポリシーの変更**
 
 管理者としてPowerShellを実行し、以下のコマンドを実行:
 
@@ -102,9 +118,7 @@ Windows 11インストール時にOOBEから完全自動化します。
 Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope LocalMachine -Force
 ```
 
-#### ステップ3: メインスクリプトの実行
-
-管理者としてPowerShellを実行し、以下のコマンドを実行:
+**ステップ3: メインスクリプトの実行**
 
 ```powershell
 C:\AutoSetup\scripts\Main-Setup.ps1
