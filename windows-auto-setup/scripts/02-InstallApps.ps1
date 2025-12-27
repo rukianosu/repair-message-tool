@@ -177,7 +177,8 @@ try {
             Write-Log "Adobe Acrobat Reader をインストール中..."
 
             # サイレントインストールパラメータ
-            $arguments = "/sAll /rs /msi EULA_ACCEPT=YES"
+            # MAKE_DEFAULT=YES: PDFファイルのデフォルトアプリとして設定
+            $arguments = "/sAll /rs /msi EULA_ACCEPT=YES MAKE_DEFAULT=YES"
             $process = Start-Process -FilePath $adobeInstaller -ArgumentList $arguments -Wait -PassThru
 
             if ($process.ExitCode -eq 0) {
@@ -235,38 +236,9 @@ try {
     if (-not $adobeFound) {
         Write-Log "✗ Adobe Acrobat Reader が見つかりません"
     } else {
-        # ========================================
-        # PDFファイルをAdobe Readerで開くように設定
-        # ========================================
-        Write-Log "----------------------------------------"
-        Write-Log "PDFファイルの関連付け設定"
-        Write-Log "----------------------------------------"
-
-        try {
-            # Adobe Reader DC の ProgID
-            $adobeProgId = "AcroExch.Document.DC"
-
-            # .pdfファイルの関連付けを設定
-            Write-Log "PDFファイルをAdobe Readerに関連付け中..."
-
-            # ユーザーレベルの関連付け設定
-            $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.pdf\UserChoice"
-
-            # 既存のキーを削除（設定を上書きするため）
-            if (Test-Path $regPath) {
-                Remove-Item -Path $regPath -Force -ErrorAction SilentlyContinue
-            }
-
-            # 関連付けをコマンドで設定（Windows 11対応）
-            $null = cmd /c "assoc .pdf=$adobeProgId" 2>&1
-            $null = cmd /c "ftype $adobeProgId=`"C:\Program Files\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe`" `"%1`"" 2>&1
-
-            Write-Log "✓ PDFファイルをAdobe Readerに関連付けました"
-
-        } catch {
-            Write-Log "警告: PDFファイルの関連付けに失敗しました: $($_.Exception.Message)"
-            Write-Log "（手動で設定が必要な場合があります）"
-        }
+        # PDFファイルの関連付けは、Adobe Readerインストール時の
+        # MAKE_DEFAULT=YES パラメータで自動的に設定されます
+        Write-Log "✓ PDFファイルの関連付け設定完了（インストール時に自動設定）"
     }
 
     # 一時フォルダのクリーンアップ
