@@ -99,7 +99,7 @@ function Get-SetupState {
     }
 
     # デフォルト状態
-    return @{
+    return [PSCustomObject]@{
         WindowsUpdateCompleted = $false
         AppsInstalled = $false
         BitLockerDisabled = $false
