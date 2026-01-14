@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>修理完了連絡メッセージ作成ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Meiryo, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .radio-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .radio-item input[type="radio"] {
+            margin-right: 5px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .radio-item label {
+            margin: 0;
+            font-weight: normal;
+            cursor: pointer;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .btn-generate {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 20px;
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-generate:active {
+            transform: translateY(0);
+        }
+
+        .result-area {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .result-area.show {
+            display: block;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .result-header h2 {
+            color: #333;
+            font-size: 20px;
+        }
+
+        .btn-copy {
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .btn-copy:hover {
+            background: #218838;
+        }
+
+        .result-text {
+            width: 100%;
+            padding: 20px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            background: #f8f9fa;
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            min-height: 400px;
+        }
+
+        .copy-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            display: none;
+            font-weight: bold;
+        }
+
+        .copy-notification.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 修理完了連絡メッセージ作成ツール</h1>
+
+        <form id="messageForm">
+            <!-- 運送会社 -->
+            <div class="form-group">
+                <label>運送会社を選んでください</label>
+                <div class="radio-group">
+                    <div class="radio-item">
+                        <input type="radio" id="yamato" name="carrier" value="ヤマト運輸" checked>
+                        <label for="yamato">ヤマト運輸</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="sagawa" name="carrier" value="佐川急便">
+                        <label for="sagawa">佐川急便</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 支払い方法 -->
+            <div class="form-group">
+                <label>支払い方法を選んでください</label>
+                <div class="radio-group">
+                    <div class="radio-item">
+                        <input type="radio" id="bank" name="payment" value="銀行振込" checked>
+                        <label for="bank">銀行振込</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="cod" name="payment" value="代引き">
+                        <label for="cod">代引き</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="collect" name="payment" value="着払い">
+                        <label for="collect">着払い</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 配達希望時間帯 -->
+            <div class="form-group">
+                <label>配達希望時間帯を選んでください</label>
+                <div class="radio-group" id="timeSlotGroup">
+                    <!-- JavaScriptで動的に生成 -->
+                </div>
+            </div>
+
+            <!-- 送り状番号 -->
+            <div class="form-group">
+                <label>送り状番号を入力してください</label>
+                <input type="text" id="trackingNumber" placeholder="例: 123456789012" required>
+            </div>
+
+            <!-- 修理内容 -->
+            <div class="form-group">
+                <label>修理内容を入力してください</label>
+                <textarea id="repairDetail" rows="5" placeholder="例: ハードディスク交換&#10;Windows 11インストール&#10;データ移行" required></textarea>
+            </div>
+
+            <!-- 合計金額 -->
+            <div class="form-group">
+                <label>合計金額を入力してください（例：12,345）</label>
+                <input type="text" id="totalPrice" placeholder="12,345" required>
+            </div>
+
+            <!-- 配達指定日 -->
+            <div class="form-group">
+                <label>配達指定日を入力してください（例：5/5）※未入力なら明日になります</label>
+                <input type="text" id="specifiedDate" placeholder="5/5">
+            </div>
+
+            <button type="submit" class="btn-generate">📝 メッセージを作成</button>
+        </form>
+
+        <div class="result-area" id="resultArea">
+            <div class="result-header">
+                <h2>✅ 完成したメッセージ</h2>
+                <button type="button" class="btn-copy" id="copyBtn">📋 コピー</button>
+            </div>
+            <div class="result-text" id="resultText"></div>
+        </div>
+    </div>
+
+    <div class="copy-notification" id="copyNotification">
+        ✓ クリップボードにコピーしました！
+    </div>
+
+    <script>
+        // 時間帯の定義
+        const timeSlots = {
+            'ヤマト運輸': ['午前中', '14時～16時', '16時～18時', '18時～20時', '19時～21時'],
+            '佐川急便': ['午前中', '12時～14時', '14時～16時', '16時～18時', '18時～20時', '18時～21時', '19時～21時']
+        };
+
+        // 時間帯の表示を更新
+        function updateTimeSlots() {
+            const carrier = document.querySelector('input[name="carrier"]:checked').value;
+            const timeSlotGroup = document.getElementById('timeSlotGroup');
+            const slots = timeSlots[carrier];
+
+            timeSlotGroup.innerHTML = '';
+            slots.forEach((slot, index) => {
+                const div = document.createElement('div');
+                div.className = 'radio-item';
+                div.innerHTML = `
+                    <input type="radio" id="time${index}" name="timeSlot" value="${slot}" ${index === 0 ? 'checked' : ''}>
+                    <label for="time${index}">${slot}</label>
+                `;
+                timeSlotGroup.appendChild(div);
+            });
+        }
+
+        // 運送会社変更時に時間帯を更新
+        document.querySelectorAll('input[name="carrier"]').forEach(radio => {
+            radio.addEventListener('change', updateTimeSlots);
+        });
+
+        // 初期表示
+        updateTimeSlots();
+
+        // フォーム送信処理
+        document.getElementById('messageForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // 入力値の取得
+            const carrier = document.querySelector('input[name="carrier"]:checked').value;
+            const payment = document.querySelector('input[name="payment"]:checked').value;
+            const timeSlot = document.querySelector('input[name="timeSlot"]:checked').value;
+            const trackingNumber = document.getElementById('trackingNumber').value.trim();
+            const repairDetail = document.getElementById('repairDetail').value.trim();
+            const totalPriceInput = document.getElementById('totalPrice').value.trim();
+            const specifiedDateInput = document.getElementById('specifiedDate').value.trim();
+
+            // 今日と明日の日付
+            const today = new Date();
+            const month = today.getMonth() + 1;
+            const day = today.getDate();
+
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowMonth = tomorrow.getMonth() + 1;
+            const tomorrowDay = tomorrow.getDate();
+
+            // 配達指定日
+            const specifiedDate = specifiedDateInput || `${tomorrowMonth}/${tomorrowDay}`;
+
+            // 金額の整形
+            let totalPrice;
+            try {
+                totalPrice = parseInt(totalPriceInput.replace(/,/g, ''));
+                if (isNaN(totalPrice)) {
+                    alert('金額の入力が正しくありません。数字だけ、またはカンマ付きで入力してください。');
+                    return;
+                }
+            } catch (e) {
+                alert('金額の入力が正しくありません。');
+                return;
+            }
+            const totalPriceStr = totalPrice.toLocaleString();
+
+            // 支払い方法による表記
+            let priceSuffix;
+            if (payment === '銀行振込') {
+                priceSuffix = '（消費税込み）';
+            } else if (payment === '代引き') {
+                priceSuffix = '（代引き手数料および消費税込み）';
+            } else {
+                priceSuffix = '（着払い送料・代引き手数料および消費税込み）';
+            }
+
+            // 送り状リンク
+            let trackingLink;
+            if (carrier === 'ヤマト運輸') {
+                trackingLink = `https://jizen.kuronekoyamato.co.jp/jizen/servlet/crjz.b.NQ0010?id=${trackingNumber}`;
+            } else {
+                trackingLink = `https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do?okurijoNo=${trackingNumber}`;
+            }
+
+            // 支払い方法による文章分岐
+            let mainMessage, repairText, actionSentence;
+            if (payment === '着払い') {
+                mainMessage = 'パソコン修理のご期待にお応えすることが出来ず、誠に申し訳ございませんでした。\nお預かりしていたパソコンをご返却させていただきます。';
+                repairText = '修理中断';
+                actionSentence = '到着後、検品をお願い申し上げます。';
+            } else {
+                mainMessage = '修理のご依頼をいただき、誠にありがとうございました。\nお預かりしていたパソコンの修理が完了いたしました。';
+                repairText = repairDetail;
+                actionSentence = '到着後、動作のご確認をお願い申し上げます。';
+            }
+
+            // メッセージ作成
+            const message = `お世話になっております。
+パソコン修理のルキテック　スタッフです。
+
+${mainMessage}
+
+本日　${month}月${day}日　発送となります。
+到着までしばらくお待ちくださいませ。
+
+${carrier}　お問い合わせ番号　${trackingNumber}
+${trackingLink}
+※Web上でご確認いただけるまでに時間がかかる場合がございます。
+
+▼修理内容
+---------------------------------
+${repairText}
+
+▼修理代金
+合計　　　　${totalPriceStr}円${priceSuffix}
+
+${specifiedDate} ${timeSlot} 配達予定となっております。${actionSentence}
+運送会社の都合によりご希望の時間帯にお届けできない場合がございますので、あらかじめご了承ください。
+
+パソコン到着後は、速やかにご確認をお願いいたします。
+何かご不明な点がございましたら、お気軽にお問い合わせくださいませ。
+
+今後ともよろしくお願い申し上げます。`;
+
+            // 結果表示
+            document.getElementById('resultText').textContent = message;
+            document.getElementById('resultArea').classList.add('show');
+
+            // 結果エリアまでスクロール
+            document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth' });
+        });
+
+        // コピーボタン
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            const resultText = document.getElementById('resultText').textContent;
+
+            // クリップボードにコピー
+            navigator.clipboard.writeText(resultText).then(() => {
+                // 通知を表示
+                const notification = document.getElementById('copyNotification');
+                notification.classList.add('show');
+
+                // 2秒後に非表示
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 2000);
+            }).catch(err => {
+                alert('コピーに失敗しました。手動でテキストを選択してコピーしてください。');
+            });
+        });
+    </script>
+</body>
+</html>
